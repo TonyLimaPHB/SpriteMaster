@@ -38,4 +38,4 @@ Para rodar este projeto, você precisará de:
 
 ```bash
 git clone https://github.com/TonyLimaPHB/SpriteMaster
-cd Sprite-Sheet-Creator
+cd SpriteMaster
