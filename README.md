@@ -37,5 +37,5 @@ Para rodar este projeto, você precisará de:
 1. **Clone o repositório**:
 
 ```bash
-git clone [https://github.com/SeuUsuario/Sprite-Sheet-Creator.git](https://github.com/TonyLimaPHB/SpriteMaster)
+git clone https://github.com/TonyLimaPHB/SpriteMaster
 cd Sprite-Sheet-Creator
