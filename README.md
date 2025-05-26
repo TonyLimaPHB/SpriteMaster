@@ -1,11 +1,11 @@
-# 🎨 **SpriteMaster 🎨🐍** 🎮
+# [ico_spritemaster fw](https://github.com/user-attachments/assets/08840e2a-7c63-4045-ace9-43f0503f9544) **SpriteMaster 🎨🐍** 🎮
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
 
 Uma ferramenta poderosa e intuitiva para criar e editar *sprite sheets* de maneira rápida e eficiente. Com recursos de remoção de fundo, zoom, seleção e alinhamento, você pode facilmente organizar seus frames para projetos de jogos ou animações!
-![ico_spritemaster fw](https://github.com/user-attachments/assets/08840e2a-7c63-4045-ace9-43f0503f9544)
+!
 
 ## 🚀 Funcionalidades
 
