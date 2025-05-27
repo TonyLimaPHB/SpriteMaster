@@ -1,19 +1,22 @@
 # src/app.py
 
 from PySide6.QtWidgets import (
-    QMainWindow, QFileDialog, QMessageBox, QWidget, QHBoxLayout
+    QMainWindow, QFileDialog, QMessageBox, QWidget, QHBoxLayout, QScrollArea
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 import os
+import logging
 
 print("🧠 [INFO] Carregando módulo: App...")
+logging.basicConfig(level=logging.INFO)
+
 
 class SpritesheetApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("SpriteMaster 🎨🐍")
+        self.setWindowTitle("Editor de Spritesheets 🎮🖼️")
         self.setGeometry(100, 100, 1200, 800)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.CustomizeWindowHint)
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
@@ -23,6 +26,10 @@ class SpritesheetApp(QMainWindow):
         self.pixmap = None
 
         # Componentes
+        self.sidebar = None
+        self.canvas = None
+
+        # Inicializa interface
         self.init_ui()
 
     def init_ui(self):
@@ -35,15 +42,31 @@ class SpritesheetApp(QMainWindow):
         # Agora criamos o Canvas com referência à Sidebar
         self.canvas = Canvas(sidebar=self.sidebar, parent=self)
 
-        # Atualizamos a Sidebar com a referência ao Canvas
+        # Conectamos a Sidebar ao Canvas após ambos serem criados
         self.sidebar.canvas = self.canvas
 
+        # Layout principal
         main_layout = QHBoxLayout()
-        main_layout.addWidget(self.canvas, stretch=3)
-        main_layout.addWidget(self.sidebar, stretch=0)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Área de scroll apenas para o Canvas
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(self.canvas)
+        scroll_area.setWidgetResizable(True)  # Permite rolagem dinâmica
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("border: none;")
+
+        # Adiciona widgets ao layout
+        main_layout.addWidget(scroll_area, stretch=3)   # Canvas com scroll
+        main_layout.addWidget(self.sidebar, stretch=0)  # Sidebar fixa
+
+        # Container final
         container = QWidget()
         container.setLayout(main_layout)
+
+        # Define como widget central
         self.setCentralWidget(container)
 
         self.create_menu_bar()
@@ -83,11 +106,13 @@ class SpritesheetApp(QMainWindow):
         if pixmap.isNull():
             self.show_error("Erro ao carregar imagem.")
             return
+
         self.image_path = path
         self.pixmap = pixmap
         self.canvas.set_background(pixmap)
         self.setWindowTitle(f"Editor de Spritesheets - {os.path.basename(path)} 🎮🖼️")
         self.canvas.clear_selections()
+        self.sidebar.update_status()
 
     def save_spritesheet(self):
         selected_rects = self.canvas.selected_rects
@@ -109,7 +134,6 @@ class SpritesheetApp(QMainWindow):
                 from src.logic.exporter import SpriteSheetExporter
                 exporter = SpriteSheetExporter(self.image_path)
 
-                # Pega todas as configs salvas nos frames
                 bg_removal_config = self.canvas.get_bg_removal_config()
                 alignment_configs = getattr(self.canvas, "_individual_align_configs", None)
 
@@ -134,6 +158,7 @@ class SpritesheetApp(QMainWindow):
                     self.show_info(f"Spritesheet salva com sucesso:\n{file_path}")
                 else:
                     self.show_error("Falha ao exportar spritesheet.")
+
             except Exception as e:
                 error_msg = f"❌ Erro ao exportar spritesheet:\n{str(e)}"
                 print(error_msg)

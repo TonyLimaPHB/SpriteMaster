@@ -13,7 +13,16 @@ class Sidebar(QWidget):
     def __init__(self, canvas=None, parent=None):
         super().__init__(parent)
 
-        self.canvas = canvas  # Referência ao Canvas
+        # src/ui/sidebar.py
+
+        def __init__(self, canvas=None, parent=None):
+            super().__init__(parent)
+
+            self.canvas = canvas
+            self.bg_color = QColor(Qt.GlobalColor.green)
+
+            self.setFixedWidth(200)
+            self.setStyleSheet("background-color: #1e1e1e; border-left: 1px solid #333;")
         self.init_ui()
 
     def init_ui(self):

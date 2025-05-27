@@ -22,18 +22,21 @@ class Canvas(QWidget):
 
         # Configurações de fundo
         self.remove_background = False
-        self.bg_color = QColor(Qt.GlobalColor.green)  # Cor do fundo a ser removido
+        self.bg_color = QColor(Qt.GlobalColor.green)  # Cor do fundo a ser removida
         self.sidebar = sidebar  # Referência ao Sidebar
 
         # Zoom
         self.zoom_level = 1.0
-        self.min_zoom = 0.5
-        self.max_zoom = 3.0
+        self.min_zoom = 0.25
+        self.max_zoom = 4.0
+
+        # Estado do fundo xadrez
+        self.checkered_applied = False  # Indica se o xadrez já foi aplicado
 
         self.setStyleSheet("background-color: #1e1e1e;")
         self.setFocusPolicy(Qt.StrongFocus)
 
-        # Armazena configurações individuais de alinhamento para cada frame
+        # Alinhamento individual dos frames
         self.individual_alignment_configs = []
 
     def set_background(self, pixmap: QPixmap):
@@ -44,53 +47,69 @@ class Canvas(QWidget):
         self.background = pixmap.copy()
         self.background_image_size = pixmap.size()
 
-        # Se a remoção de fundo for ativada, remove a cor de fundo e desenha o padrão de xadrez
-        if self.remove_background:
-            self.remove_background_color(self.background, self.bg_color)  # Remove a cor de fundo
+        # Aplica remoção de fundo e xadrez apenas uma vez
+        if self.remove_background and not self.checkered_applied:
+            self._apply_removal_and_checkered()
         else:
             transform = QTransform().scale(self.zoom_level, self.zoom_level)
             scaled_pixmap = self.background.transformed(transform)
             self.setFixedSize(scaled_pixmap.size())
             self.update()
 
-    def draw_checkered_background_in_image_size(self, painter):
-        """Desenha o padrão de xadrez translúcido com o tamanho da imagem escalada pelo zoom"""
-        if not self.background:
-            return
+    def _apply_removal_and_checkered(self):
+        """Remove cor de fundo e aplica fundo xadrez translúcido apenas uma vez"""
+        image = self.background.toImage().convertToFormat(QImage.Format_ARGB32)
 
-        checkered_size = 16
-        color1 = QColor(200, 200, 200, 100)  # Cinza translúcido
-        color2 = QColor(240, 240, 240, 100)  # Branco translúcido
+        r, g, b = self.bg_color.red(), self.bg_color.green(), self.bg_color.blue()
 
-        img_size = self.background.size()
-        scaled_width = int(img_size.width() * self.zoom_level)
-        scaled_height = int(img_size.height() * self.zoom_level)
-
-        for y in range(0, scaled_height, checkered_size):
-            for x in range(0, scaled_width, checkered_size):
-                color = color1 if ((x + y) // checkered_size) % 2 == 0 else color2
-                painter.fillRect(x, y, checkered_size, checkered_size, QBrush(color))
-
-    def remove_background_color(self, image, color):
-        """Remover a cor do fundo e substituí-la por transparência"""
-        r, g, b = color.red(), color.green(), color.blue()
-        image = image.toImage().convertToFormat(QImage.Format_ARGB32)
-
-        # Substitui os pixels com a cor de fundo pela transparência
+        # Remove pixels com a cor de fundo
         for y in range(image.height()):
             for x in range(image.width()):
                 pixel_color = QColor(image.pixel(x, y))
                 if pixel_color.red() == r and pixel_color.green() == g and pixel_color.blue() == b:
                     image.setPixelColor(x, y, QColor(0, 0, 0, 0))  # Transparente
 
-        # Converte de volta para QPixmap
-        self.background = QPixmap.fromImage(image)
+        # Converte para QPixmap
+        temp_pixmap = QPixmap.fromImage(image)
 
-        # Aplica o zoom e atualiza o tamanho do widget
+        # Cria um novo QPixmap com o xadrez como fundo visual
+        self.background_display = QPixmap(temp_pixmap.size())
+        self.background_display.fill(Qt.transparent)
+
+        painter = QPainter(self.background_display)
+        self.draw_checkered_background(painter)
+        painter.drawPixmap(0, 0, temp_pixmap)
+        painter.end()
+
+        # Marca que o xadrez foi aplicado
+        self.checkered_applied = True
+
+        # Aplica o zoom somente uma vez
+        self.background = self.background_display.copy(self.background_display.rect())
+        self._apply_zoom_and_update()
+
+    def draw_checkered_background(self, painter):
+        """Desenha o fundo xadrez translúcido diretamente no painter"""
+        checkered_size = 16
+        color1 = QColor(200, 200, 200, 100)  # Cinza translúcido
+        color2 = QColor(240, 240, 240, 100)  # Branco translúcido
+
+        rect = self.background_display.rect()
+        width, height = rect.width(), rect.height()
+
+        for y in range(0, height, checkered_size):
+            for x in range(0, width, checkered_size):
+                color = color1 if ((x + y) // checkered_size) % 2 == 0 else color2
+                painter.fillRect(x, y, checkered_size, checkered_size, QBrush(color))
+
+    def _apply_zoom_and_update(self):
+        """Aplica o zoom à imagem final (já com xadrez aplicado)"""
+        if not self.background:
+            return
+
         transform = QTransform().scale(self.zoom_level, self.zoom_level)
         scaled_pixmap = self.background.transformed(transform)
         self.setFixedSize(scaled_pixmap.size())
-
         self.update()
 
     def get_original_rect(self, qrect):
@@ -116,18 +135,14 @@ class Canvas(QWidget):
         )
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-
         if not self.background:
             return
 
+        painter = QPainter(self)
         world_transform = painter.worldTransform()
         painter.setWorldTransform(QTransform())
 
-        # Desenha o padrão de xadrez com o tamanho da imagem com zoom
-        self.draw_checkered_background_in_image_size(painter)
-
-        # Desenha imagem com zoom
+        # Desenha imagem final com zoom
         scaled_pixmap = self.background.transformed(
             QTransform().scale(self.zoom_level, self.zoom_level)
         )
@@ -160,12 +175,12 @@ class Canvas(QWidget):
         return QRect(start, end).normalized()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self.background:
+        if event.button() == Qt.LeftButton and not self.background.isNull():
             self.selection_start = event.position().toPoint()
             self.drawing = True
             self.update()
 
-        elif event.button() == Qt.RightButton and self.background:
+        elif event.button() == Qt.RightButton and not self.background.isNull():
             self.pick_color_from_image(event.position().toPoint())
 
     def mouseMoveEvent(self, event):
@@ -181,8 +196,6 @@ class Canvas(QWidget):
 
             if len(self.selected_rects) < self.max_frames:
                 self.selected_rects.append(rect_real)
-
-                # Garante que tenha uma configuração de alinhamento para cada frame
                 while len(self.individual_alignment_configs) < len(self.selected_rects):
                     self.individual_alignment_configs.append({
                         "horizontal": "center",
@@ -202,7 +215,7 @@ class Canvas(QWidget):
             if self.selected_rects:
                 self.selected_rects.pop()
                 if len(self.individual_alignment_configs) > len(self.selected_rects):
-                    self.individual_alignment_configs = self.individual_alignment_configs[:len(self.selected_rects)]
+                    self.individual_alignment_configs.pop()
                 self.update_status()
                 self.update()
                 print("⏮️ Seleção desfeita com Ctrl+Z")
@@ -217,7 +230,7 @@ class Canvas(QWidget):
                 self.zoom_level = min(self.zoom_level + 0.1, self.max_zoom)
             else:
                 self.zoom_level = max(self.zoom_level - 0.1, self.min_zoom)
-            self.set_background(self.background)
+            self._apply_zoom_and_update()
         else:
             super().wheelEvent(event)
 
@@ -237,7 +250,12 @@ class Canvas(QWidget):
             if self.sidebar:
                 self.sidebar.update_bg_button_color(color)
             self.update()
-            logging.info(f"🎨 Cor selecionada da imagem: {color.name()}")
+
+            # Se remover fundo estiver ativo, atualiza a imagem com fundo xadrez translúcido
+            if self.remove_background:
+                self.checkered_applied = False  # Força reaplicação da transparência
+                self._apply_removal_and_checkered()
+
         except Exception as e:
             logging.error(f"❌ Erro ao pegar cor da imagem: {e}")
 
@@ -291,7 +309,6 @@ class Canvas(QWidget):
         self.update()
 
     def _apply_zoom_to_rect(self, rect):
-        """Aplica o zoom a um QRect"""
         return QRect(
             int(rect.x() * self.zoom_level),
             int(rect.y() * self.zoom_level),
